@@ -185,6 +185,12 @@ export const FEATURED_BLOG_POSTS: BlogPost[] = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    title: 'Revisiting OCI-secnum',
+    description: 'Olimpiada Cubana de Informática, 2020, problema C',
+    link: '/blog/revisiting-oci-secnum',
+    uid: 'blog-revisiting-oci-secnum',
+  },
+  {
     title: 'Introducing FermiBench',
     description: 'A look at how well frontier LLMs estimate quantities they don\'t know.',
     link: '/blog/introducing-fermi-bench',

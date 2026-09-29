@@ -1,0 +1,237 @@
+# Revisiting OCI-secnum
+
+I was going over *Build a Large Language Model (From Scratch)* by Sebastian Raschka when I realized, hey, this is a good
+moment to go over linear algebra basics. So I defaulted to 3Blue1Brown's *Essence of Linear Algebra* and went through it. Halfway through,
+I remembered a problem from the Cuban Olympiad in Informatics (OCI) in my senior year that needed some clever math, or matrix multiplication,
+to get the max score. It was a weekend and it felt like a good use of time, so I decided to upsolve it.
+
+## The problem
+
+You can see it here: https://dmoj.uclv.edu.cu/problem/secnum
+
+The kid has pencils marked 1 and 2. Given N, count how many ordered sequences of pencils add up to N
+(for N = 3: `111`, `12`, `21`). N goes up to 10⁹, there are up to 1000 queries, and the answer is modulo
+100000007.
+
+It's a counting problem. The first solution that comes to mind is a textbook DP (this might be the most used problem to teach DP),
+with a caveat: it only gets you 40 points, because N is too big for a linear loop to fit in the time limit.
+
+The last pencil is either a 1 or a 2, so:
+
+```
+f(0) = 1, f(1) = 1
+f(n) = f(n-1) + f(n-2)
+```
+
+which is Fibonacci shifted by one. You can code it up as
+
+```cpp
+dp[n] = dp[n - 1] + dp[n - 2];
+```
+
+This was my solution at contest time. (Yeah, I was ass.)
+
+# Solutions
+
+This time around I went straight to the editorial:
+https://dmoj.uclv.edu.cu/problem/secnum/editorial
+
+Let's go over their solutions.
+
+## Matrix multiplication
+
+We already have the recurrence and the DP approach.
+
+Errichto has a line in his [matrix exponentiation tutorial](https://codeforces.com/blog/entry/80195):
+*if something can be solved with dp in O(1) space, we can usually speed it up later with matrix exponentiation.*
+The reason is that an O(1)-space DP forces you to write down a small fixed state and one rule that updates it.
+If every new value is a sum of old values times constants, and those constants don't change from step to step,
+that rule is exactly a matrix times a vector.
+
+In this case, at each step you only need the current value and the previous one:
+
+```
+[ newest ]
+[ older  ]
+```
+
+One step of the DP updates them like this:
+
+```
+new newest = 1·newest + 1·older
+new older  = 1·newest + 0·older
+```
+
+or, written as a matrix:
+
+```
+[ f(i+1) ]   [ 1 1 ] [ f(i)   ]
+[ f(i)   ] = [ 1 0 ] [ f(i-1) ]
+```
+
+So each step of the DP is multiplying the state vector by M = [[1,1],[1,0]], and n steps is multiplying by Mⁿ.
+We start from `[f(1), f(0)] = [1, 1]`, so to get f(N) in the top box we need N − 1 steps:
+
+```
+[ f(N)   ]          [ 1 ]
+[ f(N-1) ] = Mᴺ⁻¹ · [ 1 ]
+```
+
+# What if we could compute Mⁿ fast?
+
+Multiplying by M a billion times is no better than the loop. But matrix multiplication is associative, so you can square:
+
+```
+M → M² → M⁴ → M⁸ → ...
+```
+
+Each squaring doubles the number of steps. Multiplying two powers adds their step counts (M⁸ · M² = M¹⁰), so to get any n you combine the powers that add up to it.
+
+For 11, for example:
+
+```
+M¹¹ = M⁸ · M² · M¹
+```
+
+How do you multiply two matrices?
+
+```cpp
+Matrix multiply(Matrix A, Matrix B) {
+    Matrix C = {{{0, 0}, {0, 0}}};
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 2; j++)
+            for (int k = 0; k < 2; k++)
+                C.a[i][j] = (C.a[i][j] + A.a[i][k] * B.a[k][j]) % MOD;
+    return C;
+}
+```
+
+Remember that you multiply rows of A by columns of B. `C[i][j]` is the dot product of row `i` of A with column `j` of B:
+`i` picks the row (in both C and A), `j` picks the column (in both C and B), and `k` walks over the matching positions
+of that row and column.
+
+Then we define `power`:
+
+```cpp
+Matrix power(Matrix m, ll n) {
+    Matrix r = {{{1, 0}, {0, 1}}};           // identity: 0 steps done
+    while (n > 0) {                          // n = steps still missing
+        if (n % 2 == 1) r = multiply(r, m);  // odd -> use this piece
+        m = multiply(m, m);                  // next piece, twice as big
+        n /= 2;
+    }
+    return r;
+}
+```
+
+This implementation uses the fact that every number is a sum of distinct powers of two, and its binary form tells you which ones.
+11 in binary is 1011, meaning 11 = 8 + 0 + 2 + 1, so again:
+
+```
+M¹¹ = M⁸ · M² · M¹
+```
+
+Only two matrices are ever in memory: `m`, the current power, and `r`, the result so far. If you follow the iterations of `power`
+for n = 11, `r` starts as the identity (zero steps), then becomes M¹, then M³ (times M²), skips M⁴ because that bit is 0,
+and ends as M¹¹ (times M⁸).
+
+With this, up to 10⁹ loop steps turn into around 60 multiplications of a 2×2 matrix, O(log n).
+
+## Fast doubling
+
+This is the first time I've done a problem like this, or if I did, it was 6+ years ago, so I don't know how hard it is
+to come up with on your own.
+
+I guess the way you get to this solution is by asking: what if you could solve this in logarithmic time? Then you notice there's a sequence,
+and maybe you can write it in a way that gets you from n to 2n in O(1).
+
+One thing first: these formulas use the **standard** Fibonacci sequence F (F(0) = 0, F(1) = 1), not the problem's f.
+They're shifted by one: f(N) = F(N + 1).
+
+Start the recurrence from two arbitrary values a, b, and the terms come out as `a, b, a+b, a+2b, 2a+3b, 3a+5b, …`.
+The coefficients are Fibonacci numbers. You can check this by starting from 1, 1 and substituting, and you can prove it by induction:
+the k-th term of the sequence starting at a, b is
+
+```
+term k = a·F(k−1) + b·F(k)
+```
+
+The rule only ever looks at the last two values, so it doesn't matter where you start. Start in the middle of Fibonacci,
+with a = F(n) and b = F(n+1), and the k-th term is F(n+k):
+
+```
+F(n+k) = F(n)·F(k−1) + F(n+1)·F(k)
+```
+
+Now set k = n:
+
+```
+F(2n) = F(n)·F(n−1) + F(n+1)·F(n)
+      = F(n) · (F(n−1) + F(n+1))
+```
+
+But the recursion only carries the pair F(n), F(n+1), and F(n−1) isn't in it. So rewrite it using F(n−1) = F(n+1) − F(n):
+
+```
+F(2n) = F(n) · (2·F(n+1) − F(n))
+```
+
+Now set k = n + 1:
+
+```
+F(2n+1) = F(n)·F(n) + F(n+1)·F(n+1)
+        = F(n)² + F(n+1)²
+```
+
+So if you know the pair F(n), F(n+1), you can get the pair F(2n), F(2n+1) with a few multiplications, in O(1).
+Recurse on n/2, and if n is odd, take one normal Fibonacci step after doubling:
+
+```
+solve(12) needs solve(6) needs solve(3) needs solve(1) needs solve(0)
+```
+
+```cpp
+pair<ll, ll> solve(ll n) {                      // returns (F(n), F(n+1))
+    if (n == 0) return {0, 1};
+    auto [a, b] = solve(n / 2);                 // a = F(k), b = F(k+1), k = n/2
+    ll c = a * ((2 * b - a + MOD) % MOD) % MOD; // F(2k)
+    ll d = (a * a + b * b) % MOD;               // F(2k+1)
+    if (n % 2 == 0) return {c, d};              // n = 2k
+    return {d, (c + d) % MOD};                  // n = 2k+1: one more step
+}
+```
+
+The answer to the problem is `solve(N).second`, which is F(N+1) = f(N). The `+ MOD` is there because after taking
+mods, `2*b` can be smaller than `a`, and the subtraction would go negative.
+
+# These methods are related, right?
+
+Yes. The matrix power is
+
+```
+Mⁿ = [ F(n+1)  F(n)   ]
+     [ F(n)    F(n−1) ]
+```
+
+so squaring M is exactly "position n → position 2n". The matrix carries four numbers, but they're really only two
+different values, F(n) and F(n+1). Fast doubling keeps just those two, so it does fewer multiplications. 
+
+In fact, fast doubling is the matrix method with some extra steps. Write out M²ⁿ = Mⁿ · Mⁿ and look at the entries:
+
+```
+F(2n)   = F(n+1)·F(n) + F(n)·F(n−1)
+F(2n+1) = F(n+1)² + F(n)²
+```
+
+Matrix multiplication is the more general method, though. Building the matrix is mechanical: copy the coefficients of the recurrence
+into a grid. If the kid also had pencils marked 3, you'd use a 3×3 matrix and the same power function. Getting doubling formulas
+means squaring the matrix by hand and simplifying, and Fibonacci happens to be the case where that simplifies nicely.
+
+Both solutions are on GitHub: [jcambrac/oci-2020-secnum](https://github.com/jcambrac/oci-2020-secnum)
+
+# Personal conclusions
+
+It's crazy how hard competitive programming is. Maybe I'm just very out of shape, but this is an easy problem,
+and it didn't feel that way.
+
+{/* TODO: Add content */}
