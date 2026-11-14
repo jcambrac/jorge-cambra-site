@@ -1,0 +1,20 @@
+# First Story Detection over Heterogeneous Streams
+
+## Introduction 
+
+First Story Detection (FSD) is the task of identyfying the first document, news article, or social media post
+that reports a newly emerging event from a continuous, real-time stream of data.
+
+Put simply: given documents arriving over time, flag the ones about something nobody has discussed before.
+
+It was formalized in the late 1990s on newswire, as part of the Topic Detection and Tracking program, and later revived for Twitter.
+
+The core idea is to compare each new document to everything seen so far. If its nearest neighbor is far enough away, call it new.
+
+## Why is this useful
+
+Imagine you are trying to warn people about global catastrophes before they happen: a new pathogen, a military escalation, a dangerous jump in AI capabilities. That is what forecasting and early-warning organizations like Sentinel try to do. In that line of work, it is clearly a good thing to be aware of everything new that is going on, as early as possible.
+
+The catch is that new things rarely show up first where you would look for them. A local outbreak might surface in a regional subreddit days before a wire service picks it up. A leak or a rumor might appear on 4chan, get dismissed, and later turn out to be real. Mainstream news arrives later, but it is cleaner and easier to trust.
+
+Each source on its own gives a partial picture. Forums and imageboards are early but noisy; news is reliable but late. Watching them together lets you catch a story at its first appearance, then confirm it as it spreads to more credible sources.

@@ -184,6 +184,12 @@ export const FEATURED_BLOG_POSTS: BlogPost[] = [
 ]
 
 export const BLOG_POSTS: BlogPost[] = [
+  // {
+  //   title: 'First Story Detection over Heterogeneous Streams',
+  //   description: '',
+  //   link: '/blog/first-story-detection-heterogeneous-streams',
+  //   uid: 'blog-first-story-detection-heterogeneous-streams',
+  // },
   {
     title: 'Revisiting OCI-secnum',
     description: 'Olimpiada Cubana de Informática, 2020, problema C',
