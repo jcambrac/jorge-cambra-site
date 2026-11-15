@@ -66,6 +66,7 @@ Every day the pipeline runs, the pool grows. The system gets better over time as
   src="/images/Final fast done flywheel.png"
   alt="Training data flywheel"
   caption=""
+  zoomable
 />
 
 # The design, in one diagram
@@ -76,6 +77,7 @@ The pipeline we can build with what we have:
   src="/images/excalidraw simple scheme.png"
   alt="Filter-type decision rubric cascade"
   caption=""
+  zoomable
 />
 
 Pick the cheapest tool at each layer that answers the question asked. Regex for named entities. TF-IDF trained on a few hundred labels for topical filters. DeBERTa zero-shot for semantic filters without labels. Fine-tuned generative for full structured output. gpt-5 stays as the verification authority, and its verdicts feed the training set for tomorrow's classifier.
