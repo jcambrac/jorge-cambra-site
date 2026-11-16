@@ -16,7 +16,7 @@ Before stage 1, a small classifier we trained ourselves (Custos) skips the Reddi
 
 The daily and weekly reports are sorted into desks: AI, armed conflict, nuclear, cyber, biosecurity, disasters, finance, extremism and disinformation. A desk works well for what it expects. It works less well for a story that falls between two desks, or for a subject we never made a desk for, which ends up represented badly or not at all. And a report is written once a day, not when an analyst asks.
 
-What we wanted was to start from a question instead of a category: *what happened with X, who reported it, and what do we not have yet?* We first built a one-shot version of this, Event lookup. It finds the items we collected about an event and has one model write what they say. It takes under a minute. It can't plan, it can't look at the web, and it can't follow a lead from one search to the next.
+What we wanted was to start from a question instead of a category: *what happened with X, who reported it, what are people saying, and what do we not have yet?* We first built a one-shot version of this, Event lookup. It finds the items we collected about an event and has one model write what they say. It takes under a minute. It can't plan, it can't look at the web, and it can't follow a lead from one search to the next.
 
 ## Why not use a hosted deep research tool?
 
@@ -37,13 +37,13 @@ A hosted agent can be given access to your own data, and we looked at that. Both
 An analyst opens Ask → Research, types a question and picks a period (1 to 30 days). A worker does the rest, and the page shows it as it happens.
 
 1. **Plan.** A main model reads the question and writes a short plan: the sub-questions it wants answered.
-2. **Search.** It hands each sub-question to a searcher, and up to three searchers run at the same time. A searcher is a short loop of its own with two tools: one searches the items we collected, the other searches the web. It gets at most four tool calls, then writes what it found, with its sources.
-3. **Check and repeat.** The main model reads the findings. If something important is missing, or two findings disagree, it can send out more searches, a limited number of times.
-4. **Write.** The main model writes the report: an answer, what our items say, what the web adds, and the gaps and disagreements. Every sentence ends with the keys of its sources.
+2. **Search.** It hands each sub-question to a searcher, and up to three searchers run at the same time. A searcher is a short loop of its own with four tools: one searches the items we collected, one searches the web, one searches what people wrote (posts and tweets that nobody reviewed), and one opens the thread of a post to read what was said under it. It gets at most five tool calls, then writes what it found, with its sources, and any lead it could not check.
+3. **Check and repeat.** The main model reads the findings. If something important is missing, or two findings disagree, or a commenter said something that would change the answer if true, it can send out more searches, a limited number of times.
+4. **Write.** The main model writes the report: an answer, what our items say, what the web adds, what people are saying (in a section of its own, marked unreviewed), and the gaps and disagreements. Every sentence ends with the keys of its sources.
 
 <Cover
   src="/images/research-loop.png"
-  alt="The research loop: a main model plans and hands sub-questions to up to three searchers at once; each searcher calls two tools, our kept items and the web, and returns its findings; the main model writes the report; the page shows the run as it goes and the limits are checked in code"
+  alt="The research loop: a main model plans and hands sub-questions to up to three searchers at once; each searcher calls four tools, our kept items, the web, discussions nobody reviewed and a thread reader, and returns its findings and leads; the main model writes the report; the page shows the run as it goes and the limits are checked in code"
   caption="The research loop. Click to enlarge."
   zoomable
 />
@@ -54,16 +54,22 @@ An analyst opens Ask → Research, types a question and picks a period (1 to 30 
   caption="One run, start to finish (31 seconds, no sound)."
 />
 
-Two things are done in code and not left to the model. The first is the limits: at most three searchers at once, at most four tool calls each, and a limited number of rounds. If the loop has to stop early it still writes a report, and marks it as partial. The second is the citations: every key in the report is checked against what the run actually retrieved, and any key that was never retrieved is removed.
+Three things are done in code and not left to the model. The first is the limits: at most three searchers at once, at most five tool calls each, and a limited number of rounds. If the loop has to stop early it still writes a report, and marks it as partial. The second is the citations: every key in the report is checked against what the run actually retrieved, and any key that was never retrieved is removed. The third is what people wrote: its keys (`d1`, `d2`) may only appear in the section for it, and are removed anywhere else, so an opinion is never used as a source for the answer.
 
 The page polls the run every two seconds and shows the plan, each search with the tools it called and what it found, with a cancel button. A stronger model plans and writes, and a cheaper one does the searching. The loop itself is about 250 lines of TypeScript, with no agent framework.
 
-## The two tools
+## The four tools
 
-A searcher has only two tools, and they work differently. `search_items` looks in what we collected. The question becomes a vector, to find items with the same meaning, and a few key words, to find the exact names and places a vector can miss. The two lists are merged under a similarity bar, ranked together, and copies of one headline are counted once. The ten best come back, each with a key to cite. `web_search` sends the query to a web search service and gets six results back, each with a title, an address and a short description. The model reads only that description, never the page, and each result gets a key too. The last part of the video shows an idea we have not built: a third tool that searches the raw posts stage 1 did not keep (opinions and reactions), limited to some subreddits, with the results in their own report section, marked unreviewed.
+A searcher has four tools, and they work differently. `search_items` looks in what we collected. The question becomes a vector, to find items with the same meaning, and a few key words, to find the exact names and places a vector can miss. The two lists are merged under a similarity bar, ranked together, and copies of one headline are counted once. The ten best come back, each with a key to cite. `web_search` sends the query to a web search service and gets six results back, each with a title, an address and a short description. The model reads only that description, never the page, and each result gets a key too.
+
+The other two tools are about what people say. The kept items are, by design, events that matter, and what stage 1 rejects is often exactly what people think about them. `search_discussions` searches those raw posts by words: Reddit posts in the subreddits we have filed under a topic, tweets, and the opening posts of 4chan threads. Nobody reviewed them, so every result is marked unreviewed. `read_thread` opens one of them: a Reddit post with its best scored comments, a tweet with the tweets it answers and those that answer it, a 4chan thread's posts. Each comment gets its own key.
+
+When a searcher meets something it could not check, a commenter saying that a test changed between two reports, say, it ends its findings with a "worth following" line. The main model decides whether the lead would change the answer and, if so, starts a new search for it, in our items and on the web. In the report, what people wrote goes in its own section, apart from the sourced answer.
 
 <Clip
   src="/videos/research-tools"
-  label="An animation of how search_items and web_search work, with a made-up example question"
-  caption="How each tool works (about 75 seconds, no sound). The example question and items are made up, and the last two scenes show a tool that is planned, not built."
+  label="An animation of how the four research tools work, with a made-up example question"
+  caption="How each tool works, and how a lead is followed (about 90 seconds, no sound). The example question and items are made up."
 />
+
+One caveat from running it on our real data: without a text index, a search over a week of Reddit and 4chan posts takes 20 to 40 seconds, and we have not yet added the index to the database.
