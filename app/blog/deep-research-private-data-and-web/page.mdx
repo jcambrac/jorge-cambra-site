@@ -1,0 +1,69 @@
+# Deep Research over Private Data and the Open Web
+
+At sentinel we try to identify global catastrophes or precursors that could lead to them. For that purpose, we monitor, parse 
+and analyze large scale sources.
+
+Currently our pipeline mostly consists of two layers that only talk to each other through the database. Collection gathers what is said on Reddit, Twitter, 4chan and in the news and stores all of it, without calling any model and without dropping anything for being irrelevant. Analysis works on what is stored, item by item, in stages: a cheap model first decides whether an item matters at all, a stronger model reads the full text of the ones that pass, and once a day (and once a week) the items that made it are grouped by desk and written up as a report for analysts.
+
+<Cover
+  src="/images/sentinel-pipeline-overview.png"
+  alt="Sentinel's pipeline: collectors write to the database; the analysis reads items from it, filters comments with the Custos classifier, runs stage 1 and stage 2, and writes the daily and weekly reports"
+  caption="Collection and analysis are separate layers; they only talk through the database. Click to enlarge."
+  zoomable
+/>
+
+Before stage 1, a small classifier we trained ourselves (Custos) skips the Reddit comments that are very unlikely to matter. Comments are most of what stage 1 reads, and almost none of them pass, so this is where a filter helps the most.
+
+The daily and weekly reports are sorted into desks: AI, armed conflict, nuclear, cyber, biosecurity, disasters, finance, extremism and disinformation. A desk works well for what it expects. It works less well for a story that falls between two desks, or for a subject we never made a desk for, which ends up represented badly or not at all. And a report is written once a day, not when an analyst asks.
+
+What we wanted was to start from a question instead of a category: *what happened with X, who reported it, and what do we not have yet?* We first built a one-shot version of this, Event lookup. It finds the items we collected about an event and has one model write what they say. It takes under a minute. It can't plan, it can't look at the web, and it can't follow a lead from one search to the next.
+
+## Why not use a hosted deep research tool?
+
+Hosted deep research tools exist, so the first question is why not use one. The reason is the data. They search the open web and write a report from what they find, and they can't see what we have collected and analysed: the news articles, posts, comments and tweets our pipeline stores, scores and summarises. ("Private" here does not mean confidential. These are mostly public sources that we gathered and analysed, and no hosted tool can search them.)
+
+A hosted agent can be given access to your own data, and we looked at that. Both OpenAI's and Anthropic's research tools can call a remote tool server that you run (OpenAI's expects two read-only tools, `search` and `fetch`). It is probably the quicker way to a first version. We chose to run the loop ourselves, for technical reasons:
+
+- **The tool interface is narrower than our retrieval.** Our search combines a vector search and a keyword search over the kept items, applies a similarity threshold, collapses copies of the same headline syndicated by many outlets, and filters by time window. A `search` and `fetch` pair over documents by ID can only expose that by flattening it.
+- **There is no place to control the loop.** The loop runs on the vendor's side, and our server only sees the tool calls it makes. We can't stop a run between model calls, limit how many searches it makes, or still get a partial report when we need to cut it short.
+- **We can't choose the models.** In our loop a cheap model does the searching and a stronger one plans and writes the report. A hosted agent uses its own model for every step.
+- **The trace stays on their side.** We want the plan, each search, what it found and how long each step took as structured data, to show live on a page and to evaluate later. A hosted run gives us the final report.
+- **Every model call goes through one gateway.** Our model settings, routing, error handling and logging live in one place. Calls made by someone else's agent would not pass through it.
+- **The server has to be reachable from the vendor's cloud.** That means a service in front of our database that is open to the internet, or one that allows the vendor's addresses.
+- **Freedom to change any part of it.** The tools, the prompts, the report format, the limits and the models are ours to change one at a time, and to test against the same questions. We can add a tool that is not `search` or `fetch` (a search by place, or by story, for example), give a step a different model by changing a setting (as long as it supports tool calls), or move a step to an open-weight model. A hosted agent is a fixed loop that we can only configure from outside.
+
+## What we built
+
+An analyst opens Ask → Research, types a question and picks a period (1 to 30 days). A worker does the rest, and the page shows it as it happens.
+
+1. **Plan.** A main model reads the question and writes a short plan: the sub-questions it wants answered.
+2. **Search.** It hands each sub-question to a searcher, and up to three searchers run at the same time. A searcher is a short loop of its own with two tools: one searches the items we collected, the other searches the web. It gets at most four tool calls, then writes what it found, with its sources.
+3. **Check and repeat.** The main model reads the findings. If something important is missing, or two findings disagree, it can send out more searches, a limited number of times.
+4. **Write.** The main model writes the report: an answer, what our items say, what the web adds, and the gaps and disagreements. Every sentence ends with the keys of its sources.
+
+<Cover
+  src="/images/research-loop.png"
+  alt="The research loop: a main model plans and hands sub-questions to up to three searchers at once; each searcher calls two tools, our kept items and the web, and returns its findings; the main model writes the report; the page shows the run as it goes and the limits are checked in code"
+  caption="The research loop. Click to enlarge."
+  zoomable
+/>
+
+<Clip
+  src="/videos/research-flow"
+  label="An animation of one research run, from the question to the report"
+  caption="One run, start to finish (31 seconds, no sound)."
+/>
+
+Two things are done in code and not left to the model. The first is the limits: at most three searchers at once, at most four tool calls each, and a limited number of rounds. If the loop has to stop early it still writes a report, and marks it as partial. The second is the citations: every key in the report is checked against what the run actually retrieved, and any key that was never retrieved is removed.
+
+The page polls the run every two seconds and shows the plan, each search with the tools it called and what it found, with a cancel button. A stronger model plans and writes, and a cheaper one does the searching. The loop itself is about 250 lines of TypeScript, with no agent framework.
+
+## The two tools
+
+A searcher has only two tools, and they work differently. `search_items` looks in what we collected. The question becomes a vector, to find items with the same meaning, and a few key words, to find the exact names and places a vector can miss. The two lists are merged under a similarity bar, ranked together, and copies of one headline are counted once. The ten best come back, each with a key to cite. `web_search` sends the query to a web search service and gets six results back, each with a title, an address and a short description. The model reads only that description, never the page, and each result gets a key too. The last part of the video shows an idea we have not built: a third tool that searches the raw posts stage 1 did not keep (opinions and reactions), limited to some subreddits, with the results in their own report section, marked unreviewed.
+
+<Clip
+  src="/videos/research-tools"
+  label="An animation of how search_items and web_search work, with a made-up example question"
+  caption="How each tool works (about 75 seconds, no sound). The example question and items are made up, and the last two scenes show a tool that is planned, not built."
+/>
