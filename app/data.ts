@@ -168,22 +168,35 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
 
 export const FEATURED_BLOG_POSTS: BlogPost[] = [
   {
-    title: 'Reasoning',
-    description: 'Thoughts about LLM reasoning. (coming soon)',
-    link: '/blog/reasoning',
-    uid: 'featured-reasoning',
-    image: '/images/Naruto and co thinking/naruto thinking.jpg',
+    title: 'Rookie calculus for machine learning',
+    description: '',
+    link: '/math',
+    uid: 'featured-rookie-calculus',
+    image: '/images/cover.svg',
   },
-  {
-    title: 'Tiny Zero Reproduction',
-    description: 'Come and enjoy the aha! moment (coming soon)',
-    link: '/blog/tainy',
-    uid: 'featured-tinizero',
-    image: '/images/Naruto and co thinking/Himawari thinking.jpeg',
-  },
+  // {
+  //   title: 'Reasoning',
+  //   description: 'Thoughts about LLM reasoning. (coming soon)',
+  //   link: '/blog/reasoning',
+  //   uid: 'featured-reasoning',
+  //   image: '/images/Naruto and co thinking/naruto thinking.jpg',
+  // },
+  // {
+  //   title: 'Tiny Zero Reproduction',
+  //   description: 'Come and enjoy the aha! moment (coming soon)',
+  //   link: '/blog/tainy',
+  //   uid: 'featured-tinizero',
+  //   image: '/images/Naruto and co thinking/Himawari thinking.jpeg',
+  // },
 ]
 
 export const BLOG_POSTS: BlogPost[] = [
+  // {
+  //   title: 'Deep Research over Private Data and the Open Web',
+  //   description: '',
+  //   link: '/blog/deep-research-private-data-and-web',
+  //   uid: 'blog-deep-research-private-data-and-web',
+  // },
   // {
   //   title: 'First Story Detection over Heterogeneous Streams',
   //   description: '',

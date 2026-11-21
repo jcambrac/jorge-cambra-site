@@ -52,7 +52,7 @@ export default function Blog() {
                 <img
                   src={post.image}
                   alt=""
-                  className="aspect-[4/3] w-full rounded-lg object-cover"
+                  className="h-auto w-full rounded-lg"
                 />
               )}
               <div className="flex flex-col space-y-1">
