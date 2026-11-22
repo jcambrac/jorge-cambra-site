@@ -1,0 +1,64 @@
+...Work in progress...
+
+# Rookie calculus for machine learning
+
+
+---
+
+Say you have two classifiers. One says a post is 50% likely to be a threat. The other says 60%. You have to combine them into one answer. What would you do?
+
+Average them? Maybe. But what if one is better than the other? Then you'd trust it more. How much more? You could try some weights, count how many posts you get right, and try again.
+
+That works with two numbers. A real model has thousands of them, or billions. You can't try them all. You need a way to look at each number and know which way to move it, and by how much.
+
+Here's one way. Take one number and move it a tiny bit. Did the answers get better or worse, and by how much? Now you know which way to go. Do that for every number, over and over.
+
+That tiny experiment, made exact, is a derivative. Newton and Leibniz worked it out in the 1600s to describe how things move. Machine learning borrowed it, because training a model is the same question: if I change this a little, how much does that change?
+
+But, as big as machine learning has become, we only need tiny pieces of calculus for most of it. I'll go over those pieces, assuming a very low starting point.
+
+# 1 -  Derivatives: how fast does the output move?
+
+Start with something you can picture. A square tile has sides of 3 meters, so its area is 3² = 9 square meters. Make each side 1 centimeter longer, 3.01 m. The area becomes 9.0601 m². It grew by about 0.06, six times as much as the side did.
+
+<Cover
+  src="/images/fig-square-area.svg"
+  alt="A square of side x = 3 and its area, grown by a small nudge to the side"
+  caption="A square of side 3 m. Click to enlarge."
+  zoomable
+/>
+
+*A model asks the same question. The input is one of its numbers, like how much to trust a classifier. The output is how many mistakes it makes. If I nudge this, how much does that move?*
+
+Let's give the tile's numbers names, because we'll see them everywhere.
+
+The side grew by 0.01 m. Call that **dx**: a tiny change in the input.
+
+The area grew by 0.06 m². Call that **d(area)**: the tiny change in the output.
+
+Divide one by the other: 0.06 / 0.01 = 6. That's **d(area)/dx**, the **derivative**.
+
+The first 2, (**dx** , **d(area)**) are amounts. The derivative, its a **rate**: square meters of area per meter of side.
+
+There's a book from 1910, Calculus Made Easy by Silvanus Thompson, that clears this up in one line: d "merely means 'a little bit of.'" So dx is a little bit of side. d(area) is a little bit of area. And d(area)/dx is how many little bits of area you get per little bit of side. Six, for our tile.
+
+So why exactly 6? Look at the picture. When the side grows by dx, the area grows by two thin strips, each x long and dx wide, plus a tiny corner. The corner is dx times dx, a tiny amount of a tiny amount, so small it doesn't count. That leaves 2 · x · dx. Divide by dx and you get 2x. At x = 3, that's 6.
+
+Grow the side by 0.001 m instead, and the area grows by about 0.006 m². Smaller amounts, same ratio: 6. That's why the rate is the number worth knowing.
+
+# 2 - The chain rule: functions inside functions
+
+Models are are functions nested inside functions. 
+
+<Cover
+  src="/images/fig-network-train.svg"
+  alt="A network with an input, two layers and an output ŷ. Forward, the input passes through the layers to a prediction; backward, the loss flows back and each layer's weights W₁, W₂, W₃ get nudged. The loss is L(f₃(f₂(f₁(x))), y): functions inside functions."
+  caption="Forward, the input becomes a prediction. Backward, each layer's weights get nudged. Click to enlarge."
+  zoomable
+/>
+
+Lets take sin(x^2)
+
+• Inner: x² gets computed first.
+
+• Outer: sin( ) is applied to whatever the inner produced.

@@ -170,7 +170,7 @@ export const FEATURED_BLOG_POSTS: BlogPost[] = [
   {
     title: 'Rookie calculus for machine learning',
     description: '',
-    link: '/math',
+    link: '/blog/rookie-calculus-for-machine-learning',
     uid: 'featured-rookie-calculus',
     image: '/images/cover.svg',
   },

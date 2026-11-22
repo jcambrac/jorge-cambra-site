@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="500" viewBox="0 0 640 500" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <rect width="640" height="500" fill="#14171c"/>
+  <!-- original square, x = 3 -->
+  <rect x="140" y="110" width="270" height="270" fill="#58c4dd" fill-opacity="0.22" stroke="#58c4dd" stroke-width="3"/>
+  <text x="275" y="252" fill="#ece6e2" font-size="34" text-anchor="middle">x²</text>
+  <text x="275" y="286" fill="#9aa3ad" font-size="18" text-anchor="middle">= 9</text>
+  <!-- right strip -->
+  <rect x="410" y="110" width="40" height="270" fill="#ffd75e" fill-opacity="0.35" stroke="#ffd75e" stroke-width="2"/>
+  <text x="430" y="245" fill="#ffd75e" font-size="17" text-anchor="middle" transform="rotate(-90 430 245)">x · dx</text>
+  <!-- top strip -->
+  <rect x="140" y="70" width="270" height="40" fill="#ffd75e" fill-opacity="0.35" stroke="#ffd75e" stroke-width="2"/>
+  <text x="275" y="96" fill="#ffd75e" font-size="17" text-anchor="middle">x · dx</text>
+  <!-- corner -->
+  <rect x="410" y="70" width="40" height="40" fill="#fc6255" fill-opacity="0.45" stroke="#fc6255" stroke-width="2"/>
+  <text x="472" y="80" fill="#fc6255" font-size="15">dx²</text>
+  <line x1="452" y1="84" x2="466" y2="80" stroke="#fc6255" stroke-width="1.5"/>
+  <!-- side labels -->
+  <line x1="140" y1="400" x2="410" y2="400" stroke="#ece6e2" stroke-width="1.5"/>
+  <line x1="140" y1="394" x2="140" y2="406" stroke="#ece6e2" stroke-width="1.5"/>
+  <line x1="410" y1="394" x2="410" y2="406" stroke="#ece6e2" stroke-width="1.5"/>
+  <text x="275" y="426" fill="#ece6e2" font-size="18" text-anchor="middle">x = 3</text>
+  <line x1="410" y1="400" x2="450" y2="400" stroke="#ffd75e" stroke-width="1.5"/>
+  <line x1="450" y1="394" x2="450" y2="406" stroke="#ffd75e" stroke-width="1.5"/>
+  <text x="430" y="426" fill="#ffd75e" font-size="18" text-anchor="middle">dx</text>
+  <line x1="118" y1="110" x2="118" y2="380" stroke="#ece6e2" stroke-width="1.5"/>
+  <line x1="112" y1="110" x2="124" y2="110" stroke="#ece6e2" stroke-width="1.5"/>
+  <line x1="112" y1="380" x2="124" y2="380" stroke="#ece6e2" stroke-width="1.5"/>
+  <text x="104" y="250" fill="#ece6e2" font-size="18" text-anchor="end">x</text>
+  <line x1="118" y1="70" x2="118" y2="110" stroke="#ffd75e" stroke-width="1.5"/>
+  <line x1="112" y1="70" x2="124" y2="70" stroke="#ffd75e" stroke-width="1.5"/>
+  <text x="104" y="96" fill="#ffd75e" font-size="18" text-anchor="end">dx</text>
+  <!-- caption -->
+  <text x="320" y="462" fill="#ece6e2" font-size="16" text-anchor="middle">Grow the side by dx. The area grows by two strips, 2 · x · dx, plus a tiny corner.</text>
+  <text x="320" y="486" fill="#9aa3ad" font-size="14" text-anchor="middle">dx is drawn large. When it is small, the corner (tiny × tiny) vanishes: d(x²) ≈ 2x · dx</text>
+</svg>
