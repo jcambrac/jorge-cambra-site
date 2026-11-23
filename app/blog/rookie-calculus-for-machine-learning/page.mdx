@@ -141,3 +141,207 @@ $$
 At x = 4, that's 1/4. No stray number.
 
 Models measure their mistakes with ln, and this 1/x is what makes the math come out simple.
+
+# 4 - Linear models
+
+A linear model predicts a target value by calculating a weighted sum of input features plus a bias term (turns several inputs into one answer: multiply each input by a weight, add them up, and add one more number).
+
+Say you want to guess an apartment's monthly rent from two things, its size and how far it is from the center. A linear model would look like this:
+
+$$\text{rent} = 10 \cdot \text{size} - 30 \cdot \text{distance} + 200$$
+
+Each square meter adds $10.
+Each kilometer from the center takes away $30.
+The $200 is where you start before looking at anything. That's the **bias**.
+
+A 50 m² apartment 2 km out: 10 · 50 − 30 · 2 + 200 = $640.
+
+Each input pushes the answer up or down by a fixed amount, its weight, no matter what the other inputs are doing. That's what "linear" means here. Bigger apartments always add the same $10 per square meter, whether they're downtown or far away.
+
+In ML models, the weights are normally learned by the models themselves. Usually there are too many weights to be able to manually define them in a way that is useful.
+
+Lets explore the following flavors :
+
+- linear regression
+- logistic regression
+
+## Linear regression
+
+The rent model is linear regression. It takes some inputs and predicts a number.
+
+To keep things simple, look at apartments that are all 2 km from the center. Distance is fixed, so the model becomes:
+
+$$\text{rent} = 10 \cdot \text{size} + 140$$
+
+(That's the 200 minus 30 · 2 from before.)
+
+Here's what that looks like next to real apartments:
+
+<Cover
+  src="/images/fig-linear-regression.svg"
+  alt="Linear regression: guessing rent from apartment size. The model line is rent = 10 · size + 140; for a 50 m² apartment it guesses $640 but the real rent is $700, a miss of 60, and the squared miss is 3,600."
+  caption="Linear regression: the miss for one apartment, and its square. Click to enlarge."
+  zoomable
+/>
+
+Each dot is an apartment. The line is the model's guess for every size. Most dots don't sit exactly on the line. The gap between a dot and the line is the miss.
+
+*Wait, it never gets one right? In the picture, the line doesn't hit a single apartment exactly. That's fine. Rent depends on things the model can't see, like the floor, the view, the landlord. No line through size alone could hit them all. What matters is how close it gets. The line misses by about $49 on a typical apartment. If you had no model and just guessed the average rent, $766, for everything, you'd miss by about $194. The line is about four times better than guessing, and its weight tells you something real: each square meter adds about $10.*
+
+How wrong is the model?
+
+Take the 50 m² apartment. The model guesses 10 · 50 + 140 = $640. The real rent is $700. The model missed by $60.
+
+To score a miss, we square it: 60² = 3,600. That's the amber square in the picture.
+
+Why square it? Two reasons:
+
+A miss of 60 too high and a miss of 60 too low should count the same. Squaring makes both positive.
+Big misses should count much more than small ones. A miss of 10 scores 100. A miss of 60 scores 3,600.
+
+Do this for every apartment, take the average, and you get one number that says how wrong the model is. It's called the mean squared error. In the picture, it's the average area of the amber squares.
+
+Training
+
+Training means finding the weights that make that number as small as possible. In the picture, that's moving the line until the squares are as small as they can get.
+
+So which way should each weight move? Here's where the first two sections come in.
+
+The score for one apartment is the miss, squared. From the tile in section 1, the rate of something squared is 2 times that something. So the rate of the squared miss is 2 · miss.
+
+For our apartment the guess was $60 too low: 640 − 700 = −60. The rate is 2 · (−60) = −120. Raising the guess lowers the error.
+
+But we can't change the guess directly. We can only change the weights. That's a chain: weight → guess → squared miss. From section 2, rates along a chain multiply:
+
+How much the guess moves per unit of the size weight: the size itself, 50.
+
+How much the squared miss moves per unit of the guess: −120.
+
+Together: 50 × (−120) = −6,000.
+
+Negative means raising the size weight lowers the error. Nudge it from 10 to 10.001, and the squared miss drops from 3,600 to about 3,594. That's a drop of 6, just as −6,000 × 0.001 predicts.
+
+The bias works the same way, except the guess moves by exactly 1 per unit of bias, so its rate is just −120.
+
+That's one apartment. Real training does this for every apartment, averages the rates, and moves each weight a small step in the direction that lowers the error. Then it repeats. That's gradient descent, which gets its own section later.
+
+Try it: drag the weight, or press Step, and watch the dot roll down the bowl while the line moves toward the apartments.
+
+<LinregTrain />
+
+## Logistic regression
+
+Some questions don't have a number or long text as an answer. They have a yes or a no. Is this email spam? Will this customer cancel? Is this post a threat?
+
+A program that answers a question like that is called a classifier. It sorts things into classes: spam or not spam, threat or not threat. Most classifiers don't just say yes or no. They give a score between 0 and 1, roughly "how sure am I that it's a yes".
+
+So why would you have two classifiers for the same question? Because you can make them look at things differently, so in the end they help you get a better sense of what you are trying
+to accomplish.
+
+Take spotting threats in social media posts with two different tools:
+
+-One reads the meaning. You hand the post to a large language model and ask, "Is this a threat?" It understands context and sarcasm, and it notices a threat even with no obvious keywords.
+
+-One counts words. A simpler model learns which words show up more in threats than in normal posts ("missile", "strike", "attack") and scores each post by how many of them it contains. A common way to do that is called TF-IDF. It's fast and consistent, but literal: it misses a threat written without those words, and it gets fooled by "this recipe is the bomb".
+
+Each one can be right where the other is weak. If you combine them well, you get fewer mistakes than with either one alone. The question is how to combine them. Average them? Trust one more? How much more?
+
+Logistic regression answers that. It starts exactly like linear regression, with a weighted sum plus a bias. Call the two scores zs (zero-shot) and tfidf:
+
+$$z = w_1 \cdot zs + w_2 \cdot tfidf + b$$
+
+The weights say how much to trust each classifier, and training finds them. Say training ends with these:
+
+$$z = 2.52 \cdot zs + 5.53 \cdot tfidf - 3.79$$
+
+Take a post where zero-shot says 0.5 and TF-IDF says 0.6. Then z = 2.52 · 0.5 + 5.53 · 0.6 − 3.79 ≈ 0.79.
+
+<Cover
+  src="/images/fig-logreg-training.svg"
+  alt="Logistic regression training: the same 60 posts before training (all weights 0, average loss 0.69), after 15 steps (0.55) and after training (0.41). Each dot is a post placed at the probability the model gives it; red are real threats, blue are not."
+  caption="Here's what training does to these weights. For now, just read each dot as “how likely the model thinks this post is a threat”. How a score turns into that probability comes next."
+  zoomable
+/>
+
+# 5 Scores -> Probabilities , Loss Function
+
+The weighted sum gives each post a score z. To train, we need two more things: turn that score into a probability, and measure how wrong that probability is.
+
+The sigmoid
+
+A score can be any number: −40, 0.79, 12. A probability has to be between 0 and 1. The sigmoid squashes one into the other:
+
+$$\sigma(z) = \frac{1}{1 + e^{-z}}$$
+
+You don't need to remember the formula. You need its shape:
+
+<Cover src="/images/fig-sigmoid.svg" alt="An S-shaped curve. Very negative scores give almost 0%, a score of 0 gives exactly 50%, very positive scores give almost 100%. A score of 0.79 gives 69%." caption="The sigmoid: any score in, a probability out. Click to enlarge." zoomable />
+
+A very negative score gives almost 0%.
+A score of 0 gives exactly 50%.
+A very positive score gives almost 100%.
+
+Our post, with a score of 0.79, gets 69%: the model thinks it's more likely a threat than not.
+
+The e in the formula is the one from section 3, and it's there for the same reason: it keeps the derivative clean. How fast the probability moves when the score moves turns out to be:
+
+$$\frac{dp}{dz} = p \cdot (1 - p)$$
+
+It's built only from p, which you already have.
+
+<details>
+<summary>Where p(1 − p) comes from</summary>
+
+Write σ(z) as (1 + e⁻ᶻ)⁻¹. The outer step is "1 over something", whose rate is −1/(something)². The inner step is 1 + e⁻ᶻ, whose rate is −e⁻ᶻ. Multiply them (chain rule):
+
+$$\sigma'(z) = \frac{e^{-z}}{(1 + e^{-z})^2} = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}} = \sigma(z)\,(1 - \sigma(z))$$
+
+</details>
+
+## How wrong is a probability?
+We need a score that moves a little every time a weight moves a little. The standard one is log loss: take the probability the model gave to the true answer, and score it with −ln.
+
+$$
+\text{loss} = -\ln(\text{probability given to the true answer})
+$$
+
+| Probability given to the true answer | Loss |
+| --- | --- |
+| 0.9, confident and right | 0.11 |
+| 0.5, no idea | 0.69 |
+| 0.01, confident and wrong | 4.61 |
+
+Being right costs almost nothing.
+
+Shrugging costs a bit.
+
+Being confidently wrong costs a lot, and it keeps growing as the probability heads toward 0.
+
+## Why ln?
+
+Why score a probability with −ln, and not something simpler? Three reasons:
+
+- **It has the right shape.** $$\ln(1) = 0$$, so a model that gives the true answer 100% pays nothing. As the probability heads toward 0, −ln shoots up without limit. That's exactly the "confidently wrong costs a lot" behavior from the table.
+- **It turns multiplying into adding.** How likely a model is to get every post right is the product of its probabilities: 0.9 × 0.8 × 0.95 × … With thousands of posts, that product is so tiny a computer rounds it to zero. ln turns the product into a sum: $$\ln(a \cdot b) = \ln(a) + \ln(b)$$. So instead of multiplying thousands of tiny numbers, you add up thousands of ordinary ones. Averaging those is the loss.
+- **Its derivative is clean.** From section 3, the rate of $$\ln(p)$$ is just $$1/p$$. Combined with the sigmoid's $$p(1 - p)$$, most of the math cancels out during training, as you'll see.
+
+Why ln and not $$\log_2$$? Same shape, same behavior. ln just keeps the derivative free of the stray 0.693, for the same reason e beat 2 in section 3.
+
+It shouts loudest about the worst mistakes.
+
+Say our post really is a threat. The model gave it 69%, so its loss is $$-\ln(0.69) \approx 0.37$$. If it weren't a threat, the true answer would be "no", which got 31%, and the loss would be $$-\ln(0.31) \approx 1.17$$.
+
+Written for a label y that's 1 (threat) or 0 (not a threat), both cases fit in one formula:
+
+$$
+L = -\bigl[\, y \ln p + (1 - y) \ln(1 - p) \,\bigr]
+$$
+
+When y = 1, only the first part is left: $$-\ln(p)$$. When y = 0, only the second: $$-\ln(1 - p)$$. Average it over every post, and you get one number that says how wrong the model is.
+
+<Cover
+  src="/images/fig-cancel.svg"
+  alt="Why sigmoid and log loss go together, for a real threat (y = 1). The rate of the loss, −1/p, explodes as p nears 0 and is flattest near 1. The rate of the sigmoid, p(1 − p), is flattest near 0 and 1. Multiplied they give p − 1, a straight line with no blow-up and no vanishing: prediction minus truth."
+  caption="Where one rate explodes, the other shrinks. Multiplied, they become simply p − y: prediction minus truth. Click to enlarge."
+  zoomable
+/>

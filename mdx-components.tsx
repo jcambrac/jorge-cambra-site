@@ -3,6 +3,7 @@ import GPUModelMatrix from '@/components/gpu-model-matrix'
 import ChainLines from '@/components/chain-lines'
 import Clip from '@/components/clip'
 import Cover from '@/components/cover'
+import LinregTrain from '@/components/linreg-train'
 import Footnote from '@/components/footnote'
 import Formula from '@/components/formula'
 import SongPlayer from '@/components/song-player'
@@ -15,6 +16,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Clip,
     Cover,
     Footnote,
+    LinregTrain,
     Formula,
     SongPlayer,
   }
