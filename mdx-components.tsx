@@ -4,6 +4,7 @@ import ChainLines from '@/components/chain-lines'
 import Clip from '@/components/clip'
 import Cover from '@/components/cover'
 import LinregTrain from '@/components/linreg-train'
+import OneWeight from '@/components/one-weight'
 import GradientMap from '@/components/gradient-map'
 import Footnote from '@/components/footnote'
 import Formula from '@/components/formula'
@@ -18,6 +19,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Cover,
     Footnote,
     GradientMap,
+    OneWeight,
     LinregTrain,
     Formula,
     SongPlayer,

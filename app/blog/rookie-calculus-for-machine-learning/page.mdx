@@ -330,6 +330,13 @@ Why score a probability with −ln, and not something simpler? Three reasons:
 - **It turns multiplying into adding.** How likely a model is to get every post right is the product of its probabilities: 0.9 × 0.8 × 0.95 × … With thousands of posts, that product is so tiny a computer rounds it to zero. ln turns the product into a sum: $$\ln(a \cdot b) = \ln(a) + \ln(b)$$. So instead of multiplying thousands of tiny numbers, you add up thousands of ordinary ones. Averaging those is the loss.
 - **Its derivative is clean.** From section 3, the rate of $$\ln(p)$$ is just $$1/p$$. Combined with the sigmoid's $$p(1 - p)$$, most of the math cancels out during training, as you'll see.
 
+<Cover
+  src="/images/fig-why-ln.svg"
+  alt="Two panels. Left: the curve of −ln(p), which is 0 at p = 1, 0.69 at p = 0.5, and shoots up to 4.61 at p = 0.01. Right: multiplying 1,000 probabilities of 0.9 gives about 10⁻⁴⁶, which a computer rounds to 0, while adding −ln of each gives an ordinary 105.4."
+  caption="Why −ln: its shape punishes confident mistakes, and it turns a vanishing product into a readable sum. Click to enlarge."
+  zoomable
+/>
+
 Why ln and not $$\log_2$$? Same shape, same behavior. ln just keeps the derivative free of the stray 0.693, for the same reason e beat 2 in section 3.
 
 It shouts loudest about the worst mistakes.
@@ -343,13 +350,6 @@ L = -\bigl[\, y \ln p + (1 - y) \ln(1 - p) \,\bigr]
 $$
 
 When y = 1, only the first part is left: $$-\ln(p)$$. When y = 0, only the second: $$-\ln(1 - p)$$. Average it over every post, and you get one number that says how wrong the model is.
-
-<Cover
-  src="/images/fig-cancel.svg"
-  alt="Why sigmoid and log loss go together, for a real threat (y = 1). The rate of the loss, −1/p, explodes as p nears 0 and is flattest near 1. The rate of the sigmoid, p(1 − p), is flattest near 0 and 1. Multiplied they give p − 1, a straight line with no blow-up and no vanishing: prediction minus truth."
-  caption="Where one rate explodes, the other shrinks. Multiplied, they become simply p − y: prediction minus truth. Click to enlarge."
-  zoomable
-/>
 
 # 6 - Partial derivatives
 
@@ -391,3 +391,157 @@ We want the loss to go down, so we walk the other way: minus the gradient points
 Try it: drag the point around the map and watch the gradient, minus the gradient and the two partial derivatives change. Press "Step downhill" to take one step.
 
 <GradientMap />
+
+
+# 7 - Who gets the blame?
+
+When a model gets a post wrong, how does each weight "know" how much to change? Its own partial derivative tells it.
+
+Take the threat model from section 4. A post goes through a chain:
+
+weight → score $$z$$ → probability $$p$$ → loss
+
+From section 2, rates along a chain multiply. So the partial derivative for one weight is three rates multiplied together:
+
+- How the loss moves with $$p$$: $$-1/p$$. That's the clean $$1/x$$ from ln, in section 3.
+- How $$p$$ moves with $$z$$: $$p(1 - p)$$. That's the sigmoid's rate, from section 5.
+- How $$z$$ moves with the weight: that weight's input. If a weight multiplies a score of 0.6, nudging it moves $$z$$ by 0.6 per unit.
+
+Multiply the first two, and something nice happens:
+
+$$
+-\frac{1}{p} \cdot p\,(1 - p) = -(1 - p) = p - 1
+$$
+
+The $$p$$'s cancel. For a real threat ($$y = 1$$), what's left is $$p - 1$$. Do the same for a harmless post ($$y = 0$$) and you get $$p - 0$$. Either way, it's the prediction minus the truth: $$p - y$$.
+
+<Cover src="/images/fig-cancel.svg" alt="Three panels: the loss's rate −1/p blows up near p = 0, the sigmoid's rate p(1−p) shrinks to 0 at the ends, and their product is the straight line p − 1." caption="Where one rate explodes, the other shrinks. Multiplied, they become p − y. Click to enlarge." zoomable />
+
+This is why sigmoid and log loss always come as a pair. On its own, the sigmoid's rate shrinks to almost nothing when the model is very sure, so a confidently wrong model would barely learn. The loss's rate blows up exactly there and makes up for it. What's left is a simple, honest signal.
+
+So the partial derivative for each weight is:
+
+$$
+\frac{\partial L}{\partial w} = (p - y) \cdot \text{that weight's input}
+$$
+
+Each weight is blamed in proportion to how wrong the model was, times how much its own input took part.
+
+## Some examples
+
+**Example 1: a real threat the model was unsure about.** Zero-shot says 0.5 and TF-IDF says 0.6, so the model says 69%. The truth is $$y = 1$$, so $$p - y = -0.31$$.
+
+| Weight | Its input | Blame: $$(p - y) \times \text{input}$$ |
+| --- | --- | --- |
+| zero-shot | 0.5 | −0.16 |
+| TF-IDF | 0.6 | −0.19 |
+| bias | 1 | −0.31 |
+
+All negative: raising every weight lowers the loss and pushes $$p$$ toward 100%. TF-IDF gets a bit more of the push, because its input was bigger.
+
+**Example 2: a harmless post that fooled TF-IDF.** "This recipe is the bomb." Zero-shot says 0, TF-IDF says 1, so the model says 85%. The truth is $$y = 0$$, so $$p - y = +0.85$$.
+
+| Weight | Its input | Blame: $$(p - y) \times \text{input}$$ |
+| --- | --- | --- |
+| zero-shot | 0 | 0 |
+| TF-IDF | 1 | +0.85 |
+| bias | 1 | +0.85 |
+
+Positive: lowering these weights lowers the loss. TF-IDF and the bias get pushed down. Zero-shot gets no blame at all. It said 0, so it had no part in the mistake.
+
+No weight changes at random. Each one moves by exactly its share. Put the three blames side by side, and that's the gradient for this post: $$(-0.16,\ -0.19,\ -0.31)$$ for the first one. Average it over every post, step against it, and you're training. That's the next section.
+
+# 8 - Gradient descent
+
+We know which way is downhill: minus the gradient. The last question is how far to step.
+
+Training is a loop:
+
+Compute the gradient.
+Take a small step against it.
+Repeat.
+
+As a formula:
+
+$$w \leftarrow w - \eta \cdot \nabla L$$
+
+- $$w$$: one weight of the model, the number we are adjusting.
+- $$\leftarrow$$: the arrow means "replace $$w$$ with". The new value takes the old one's place.
+- $$\eta$$: the step size $$\eta$$ (the Greek letter eta) is the learning rate. It says how big a step to take.
+- $$\nabla L$$: the gradient from section 6, the arrow that points uphill on the loss. Minus it points downhill.
+
+## Picture it with one weight
+
+Take a loss with one weight: $$L = (w - 3)^2$$. Look at it from the side. Left to right is the weight $$w$$. Height is the loss. It's a valley, and the bottom is at $$w = 3$$.
+
+<OneWeight />
+
+The gradient lives on the floor, on the weight's axis. With one weight it can only point left or right, and it always points toward the higher wall of the valley.
+
+Why the higher wall? The gradient measures what happens to the loss when the weight goes up. At $$w = 0$$ it's $$2(0 - 3) = -6$$. Negative means raising $$w$$ lowers the loss, so lowering $$w$$ is what raises it. The arrow points left, up the left wall. At $$w = 5$$ it's $$+4$$: raising $$w$$ raises the loss, and the arrow points right, up the right wall. Either way, it points to where the loss climbs.
+
+The update is the amber arrow, and it always goes the opposite way:
+
+$$
+w \leftarrow w - \eta \cdot \text{gradient}
+$$
+
+At $$w = 0$$: $$0 - 0.1 \cdot (-6) = 0.6$$. Subtracting a negative number moves the weight right, toward the bottom, and the loss drops from 9 to 5.76. At $$w = 5$$: $$5 - 0.1 \cdot 4 = 4.6$$. The weight moves left, toward the bottom again.
+
+So the gradient and the update are never independent. The update is the gradient flipped and scaled by the learning rate.
+
+Press Step a few times from $$w = 0$$. Each step closes 20% of the gap to 3: 0, then 0.6, 1.08, 1.46… The steps shrink on their own, because the valley gets flatter near the bottom, so the gradient gets smaller.
+
+Now move the learning-rate slider:
+
+- $$\eta = 0.1$$: steady progress.
+- $$\eta = 1$$: the weight jumps from 0 to 6, back to 0, then 6, forever. It overshoots by exactly as much as it was off.
+- $$\eta = 1.1$$: each jump overshoots further than the last, and the weight flies off the chart.
+
+That's why the learning rate is the first thing anyone tunes. Too small and training crawls. Too big and it bounces or explodes.
+
+With more weights it's the same picture, except the floor is a map instead of a line. Each weight gets its own number, and together they make the arrow you saw in section 6.
+
+## Valleys, saddles and getting stuck
+
+Gradient descent only feels the slope where it stands. Picture a ball rolling downhill in fog: it stops in whichever valley is nearest, even if a deeper one sits over the next hill. So in principle, it only finds a local minimum, not the best one.
+
+In practice, that's rarely a problem for big models, for three reasons:
+
+- **Noise.** Real training computes each step from a random handful of examples, a mini-batch, not the whole dataset. So each step's slope is slightly off. That jiggle shakes the ball out of shallow dips.
+- **Momentum.** Most optimizers (like Adam) remember their recent steps and keep rolling in the same direction, coasting over small bumps.
+- **Many dimensions.** To trap the ball, the ground has to curve up in every direction at once. With millions of weights, that's very unlikely. Most flat spots are saddles: uphill one way, downhill another. Sooner or later, the ball finds the way down.
+
+## Many examples, one step
+
+The loss is an average over all the training examples, so each step is a compromise. Every example "votes" for how each weight should move, using the blame from section 7, and the step follows the average vote.
+
+One full pass through every example is called an epoch. Training usually runs many epochs.
+
+The training figure in section 4 was made exactly this way. It started with all weights at 0, used $$\eta = 2$$, and took 600 steps. Each step averaged the blame over all 60 posts and moved every weight against it.
+
+# What to read next ? 
+
+## Neural networks and backpropagation
+
+A single neuron can only draw a straight line, so it can't learn XOR. Put neurons in layers, with the outputs of one layer feeding the next, and it can.
+
+But now the chain from a weight to the loss runs through many layers. The blame for a weight deep inside depends on the blame of everything above it. Backpropagation is the chain rule from section 2, organized so each layer passes its blame down to the layer below, and no rate gets computed twice. It's how every neural network is trained. (you ll find <a href="#" className="text-black dark:text-white">its own post</a> on this same blog, shortly after)
+
+## Attention and LLMs
+
+LLMs read text as a sequence of words, and each word needs to know which other words matter for it. 
+
+Attention gives every pair of words a score, then turns the scores into weights with softmax, an e-based cousin of the sigmoid from section 5. Those scores come from weights too, and they're trained exactly like everything here: a loss, a gradient, and steps downhill. It also gets <a href="#" className="text-black dark:text-white">its own post</a>.
+
+## Look inside: linear probes
+
+When an LLM reads a post, it turns it into long lists of numbers inside itself, one list per layer. Nobody labels what those numbers mean. A linear probe asks: is "threat or not" written in there somewhere?
+
+To find out, run many labeled posts through the model, collect those internal numbers, and train a logistic regression on them. That's exactly section 4, with the loss from section 5 and the steps from section 8. The only change is the inputs: instead of two classifier scores, the probe gets hundreds or thousands of the model's internal numbers.
+
+If the probe can tell threats from non-threats, the model already knows the difference, stored along one straight direction inside it.
+
+It's also cheap. The model reads each post once, writes nothing, and the probe on top is just a weighted sum. That's far less work than asking an LLM "is this a threat?" and waiting for an answer, post after post. When you have millions of posts, that difference matters.
+
+That's <a href="#" className="text-black dark:text-white">the next post</a>.
