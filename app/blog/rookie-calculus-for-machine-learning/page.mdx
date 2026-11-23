@@ -1,5 +1,11 @@
 ...Work in progress...
 
+<Cover
+  src="/images/cover.svg"
+  alt="A hand-drawn loss curve on grid paper. A ball sits on a downhill slope with a red tangent line labeled slope = derivative and a blue arrow labeled step downhill."
+  caption="A ball rolling downhill: the slope tells it which way to go."
+/>
+
 # Rookie calculus for machine learning
 
 
@@ -345,3 +351,44 @@ When y = 1, only the first part is left: $$-\ln(p)$$. When y = 0, only the secon
   caption="Where one rate explodes, the other shrinks. Multiplied, they become simply p − y: prediction minus truth. Click to enlarge."
   zoomable
 />
+
+# 6 - Partial derivatives
+
+So far, every rate had one input and one output. A real model has many weights, and its loss depends on all of them at once.
+
+The rent model has two (size and bias). The threat model has three. An LLM has billions.
+
+So the question becomes: if I nudge one weight and leave all the others alone, how much does the loss move? That's a partial derivative.
+
+For the 50 m² apartment from section 4:
+
+- nudging the size weight moves the squared miss at a rate of −6,000
+- nudging the bias moves it at a rate of −120
+
+Each time, one weight moved and the other stayed put. That's what "partial" means here: one at a time.
+
+The notation
+
+It gets a curly d, written ∂ and read "partial":
+
+$$\frac{\partial L}{\partial w}$$
+
+Read it as "how fast L moves when only w moves". It means the same as d/dx. The curly d is just a reminder that other things exist, and they're being held still.
+
+## The gradient
+
+Put the partial derivatives for every weight in one list, and you get the gradient, written $$\nabla L$$:
+
+$$
+\nabla L = \left( \frac{\partial L}{\partial w_1},\ \frac{\partial L}{\partial w_2},\ \dots \right)
+$$
+
+For the apartment, it's $$(-6{,}000,\ -120)$$.
+
+Here's a way to picture it. With two weights, imagine a landscape. Each spot on the ground is one choice of the two weights, and the height there is the loss. The gradient is an arrow on the ground pointing in the direction where the ground climbs fastest. Its length says how steep that climb is.
+
+We want the loss to go down, so we walk the other way: minus the gradient points downhill.
+
+Try it: drag the point around the map and watch the gradient, minus the gradient and the two partial derivatives change. Press "Step downhill" to take one step.
+
+<GradientMap />
